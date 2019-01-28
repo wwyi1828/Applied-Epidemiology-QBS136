@@ -1,0 +1,75 @@
+---
+title: "Hw8_Wu"
+author: "Weiyi"
+date: "November 13, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+1. Read and transformate data
+```{r}
+#setwd("D:/Program Files (x86)/QBS Hw/Applied Epi")
+setwd("E:/Download/QBS/AppliedEpi")
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+data <- read.csv("frmgham2.csv")
+data %<>% filter(PERIOD == 1) %>% select(RANDID, SYSBP, SEX, BMI)
+str(data)
+data$SEX %<>% as.factor()
+str(data)
+```
+2.
+```{r}
+lm_ss <- lm(data$SYSBP ~ data$SEX)
+glm_ss <- glm(data$SYSBP ~ data$SEX)
+summary(lm_ss)
+summary(glm_ss)
+data %>% group_by(SEX) %>% summarise(MEAN = mean(SYSBP))
+av_ss <- aov(data$SYSBP ~ data$SEX)
+summary(av_ss)
+```
+The t statistic in linear regression equals the f statistic in the ANOVA. \ 
+3.
+```{r}
+lm_sb <- lm(data$SYSBP ~ data$BMI)
+glm_sb <- glm(data$SYSBP ~ data$BMI)
+summary(lm_sb)
+summary(glm_sb)
+```
+$$SYSBP=86.66684+1.78852\times BMI$$ \ 
+Therefore, the intercept means that if BMI equals 0 the SYSBP will be 86,66684 in this linear regression model.\ The coefficients indicates that if BMI increase one unit the SYSBP will increase 1.78852 units.\ 
+4.
+```{r}
+cor.test(data$SYSBP, data$BMI)
+glm(data$SYSBP ~ data$BMI + data$SEX)
+glm(data$SYSBP ~ data$BMI + data$SEX * data$BMI)
+```
+
+```{r}
+data %>% filter(SEX == 1) %>% glm(SYSBP ~ BMI, data = .)
+data %>% filter(SEX == 2) %>% glm(SYSBP ~ BMI, data = .)
+data %>% ggplot() +
+    geom_point(aes(x = BMI, y = SYSBP, color = SEX),
+               alpha=0.5,shape=1) +
+    geom_smooth(aes(x = BMI, y = SYSBP, color = SEX),method = lm,
+                se = F) + 
+    scale_colour_hue("Gender",breaks=c("1","2"),
+                     labels=c("Male","Female")) + 
+    labs(x="BMI",y="systolic blood pressure(mm Hg)",title = "The relationship between BMI and systolic blood pressure",
+         caption="For each one-unit increase in BMI,the systolic blood pressure in male increase is faster than in female")
+```
+
+```{r}
+data %>% ggplot()+
+  geom_histogram(aes(x=log(SYSBP)))+
+  labs(x="log transformed systolic blood pressure",
+       title = "The histogram of systolic blood pressure",
+       caption="After log transformation, the distribution of systolic blood pressure is similar to a normal distribution.")
+data %>% ggplot()+
+  geom_histogram(aes(x=log(BMI)))+
+    labs(x="log transformed BMI",title = "The histogram of BMI",
+         caption = "After log transformation, the distribution of BMI is similar to a normal distribution.")
+```

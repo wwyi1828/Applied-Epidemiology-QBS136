@@ -1,0 +1,73 @@
+---
+title: "Hw_7"
+author: "Weiyi Wu"
+date: "2018/11/8"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Read data and coerce variables in to correct type
+```{r}
+setwd('E:/Download/QBS/AppliedEpi')
+library(dplyr)
+data <- read.csv("eso.csv")
+head(data)
+str(data)
+for (i in 1:length(data)){
+  data[,i] <- as.factor(data[,i])
+}
+str(data)
+```
+2.
+```{r}
+alc <- table(data$alcohol, data$cancer)
+alc <- as.data.frame.matrix(alc)
+OR <- function(df){
+  Odds_ratio <- c()
+  for(i in 2:nrow(df)){
+      Odds_ratio[i-1] <- (df[i,2]/df[1,2])/(df[i,1]/df[1,1])
+  }
+  return(Odds_ratio)
+}
+RCC1<- alc[1,2]/alc[1,1]
+RCC2 <- alc[2,2]/alc[2,1]
+RCC3 <- alc[3,2]/alc[3,1]
+RCC4 <- alc[4,2]/alc[4,1]
+Odds_ratio_alc <- OR(alc)
+```
+So, it's clear that the ratio vary with different alcohol use.\ 
+
+3.
+```{r}
+age <- table(data$age, data$cancer) %>% as.data.frame.matrix()
+Odds_ratio_age <- OR(age)
+```
+Therefore, the odds ratio increases as the age-group increase 
+```{r}
+mod <- glm(cancer~alcohol, family = binomial(link = logit), data = data)
+summary(mod)
+Odds_exp_alc <- c()
+for (i in 2:4){
+  Odds_exp_alc[i-1] <- exp(mod$coefficients[i])
+}
+data.frame(Odds_exp_alc,Odds_ratio_alc) %>% print()
+```
+They are identical.
+```{r}
+mod.adj <- glm(cancer~alcohol+age, family = binomial(link = logit),data = data)
+anova(mod,mod.adj,test="LRT")
+```
+The mod.adj is better than mod.
+```{r}
+Odds_ratio_adalc <- exp(mod.adj$coefficients[2:4])
+data.frame(Odds_ratio_adalc,Odds_ratio_alc) %>% print()
+```
+The odds ratio in alcohol2 and alcohol4 group decrease, and increase slightly in alcohol3 group.
+```{r}
+tob <- as.data.frame.matrix(table(data$tobacco,data$cancer))
+tod.adj <- glm(data$cancer~data$tobacco+data$age, family = binomial(link = logit))
+Odds_ratio_adtob <- exp(tod.adj$coefficients[2:4])
+```

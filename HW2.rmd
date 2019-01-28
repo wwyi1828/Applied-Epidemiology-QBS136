@@ -1,0 +1,171 @@
+---
+title: "Applied epi hw2"
+author: "Weiyi Wu"
+date: "09/26/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Read and Check data
+```{r}
+setwd("E:/Download/QBS/AppliedEpi/wk2")
+library(readr)
+library(dplyr)
+library(magrittr)
+data <- read_csv("frmgham2.csv")
+data %T>% head() %T>% str() 
+data %<>% mutate_at(c("SEX","CURSMOKE","DIABETES","BPMEDS","educ","PREVAP","PREVCHD","PREVMI","PREVSTRK","PREVHYP","PERIOD","DEATH","ANGINA","HOSPMI","MI_FCHD","ANYCHD","STROKE","CVD","HYPERTEN"),as.factor)
+if(sum(data[which(data$PERIOD=='1'),]$TIME)==0){
+  print("The number of days since baseline is 0")
+}else{
+  print("incorrect data")
+}
+```
+
+compute each period's mean and range
+```{r}
+mean <- c()
+range <- c()
+for (i in 1:3){
+  mean[i] <- mean(data[which(data$PERIOD==i),]$TIME)
+  range[i] <- max(data[which(data$PERIOD==i),]$TIME)-
+    min(data[which(data$PERIOD==i),]$TIME)
+  print(paste('The mean and range of PERIOD',i,"are ",mean[i],'and',range[i]))
+}
+
+```
+
+compute the prevalence 
+```{r}
+prevalence <- c()
+for (i in 1:3){
+prevalence[i] <- nrow(filter(data,PERIOD==i & DIABETES==1))/nrow(filter(data,PERIOD==i))
+print(paste("PERIOD",i,":",prevalence[i]))
+}
+#calculate the prevalence of men and women
+men_pre <- nrow(filter(data,SEX==1 & DIABETES==1 & PERIOD==1))/nrow(filter(data,SEX==1& PERIOD==1))
+women_pre <- nrow(filter(data,SEX==2 & DIABETES==1& PERIOD==1))/nrow(filter(data,SEX==2& PERIOD==1))
+
+if(men_pre>women_pre)
+{
+  print(paste('men have a higher prevalence of diabetes at enrollment.',men_pre,"for men and",women_pre,"for women."))
+  }else{
+  print(paste('women have a higher prevalence of diabetes at enrollment.',men_pre,"for men and",women_pre,"for women."))
+  }
+data2 <- filter(data,PERIOD==1) #Creat a new data set
+men_age <- mean(data2[which(data2$SEX==1),]$AGE)
+women_age <- mean(data2[which(data2$SEX==2),]$AGE)
+if(abs(men_age-women_age)<=1){
+  print(paste('The age of the two groups is almost the same.',
+              men_age,"for men and",women_age,"for women."))
+}else{
+  print('The age of the two groups is different ')
+}
+```
+
+Build a table of selected characteristics 
+```{r}
+library(table1)
+data2$SEX <- factor(data2$SEX,
+                    labels = c("Male","Female"))
+data2$CURSMOKE <- factor(data2$CURSMOKE,
+                   #levels=c(0,1),
+                   labels=c("Not Smoker","Curent Smokers"))
+
+data2$BPMEDS <- factor(data2$BPMEDS,
+                         levels=c(0,1),
+                         labels=c("Not currently used","Current Use"))
+data2$DIABETES <- factor(data2$DIABETES,
+                       levels=c(0,1),
+                       labels=c("Not a diabetic ","Diabetic"))
+
+data2$educ <- factor(data2$educ,
+                       levels=c(1:4),
+                       labels=c("0-11 years","High School Diploma","Some College, Vocational School","College(BS,BA) degree or more"))
+
+
+
+label(data2$CURSMOKE) <- "Current cigarette smoking at exam "
+label(data2$BPMEDS) <- "Use of Anti-hypertensive medication 
+at exam "
+label(data2$educ) <- "Attained Education"
+label(data2$DIABETES) <- "Diabetic according to criteria of first 
+exam treated or first exam with casual 
+glucose of 200 mg/dL or more "
+
+table1(~AGE+SYSBP+DIABP+CURSMOKE+BPMEDS+educ+BMI+DIABETES|SEX,data2,overall = "Total")
+```
+
+Draw a histogram
+```{r}
+library(gridExtra)
+library(ggplot2)
+
+
+p1<-data %>% ggplot()+
+  geom_histogram(aes(SYSBP),bins=50,col="orchid",
+                 fill="orchid")+
+  labs(x="Systolic Blood Pressure(mmHg)",y="count",
+       title="Histogram of baseline",
+       subtitle="4434 Samples",
+       caption="Untransformed data")+
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(size = 13,hjust= 0.5,
+                                    color = 'orchid'),
+        plot.subtitle = element_text(size=10,hjust=0.5),
+        text=element_text(face='italic',color = 'orchid'))+
+  theme(panel.grid.major =element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"))
+data2 %<>% mutate(NSYSBP=(SYSBP-mean(SYSBP))/sd(SYSBP),
+                  LSYSBP=log10(SYSBP))
+p2<-data2 %>% ggplot()+
+  geom_histogram(aes(NSYSBP),bins=50,col='steelblue',
+                 fill="steelblue")+
+  labs(x="Systolic Blood Pressure(no units)",y="count",
+       title="Histogram of baseline",
+       subtitle="4434 Samples",
+       caption="Transformed by z-score")+
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(size = 13,hjust= 0.5,
+                                    color = 'steelblue'),
+        plot.subtitle = element_text(size=10,hjust=0.5),
+        text=element_text(face='italic',color = 'steelblue'))+
+  theme(panel.grid.major =element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"))
+
+p3<-data2 %>% ggplot()+
+  geom_histogram(aes(LSYSBP),bins=50,col='olivedrab',
+                 fill='olivedrab')+
+  labs(x="Systolic Blood Pressure(log10(mmHg))",y="count",
+       title="Histogram of baseline",
+       subtitle="4434 Samples",
+       caption="Transformed by log10()")+
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(size = 13,hjust= 0.5),
+        plot.subtitle = element_text(size=10,hjust=0.5),
+        text=element_text(face='italic',color = 'olivedrab'))+
+  theme(panel.grid.major =element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"))
+
+
+grid.arrange(p1,p2,p3, ncol=2, nrow=2, widths=c(2,2), heights=c(2,2))
+```
+
+Calculate the incident rate
+```{r}
+data3 <- data %>% filter(PERIOD==1) %>%
+              select(c('RANDID','TIMEMI','HOSPMI'))
+incident_rate <- sum(as.numeric(as.character(data3$HOSPMI)))/sum(data3$TIMEMI)*365
+print(paste("The incident rate is",incident_rate," per person-years"))
+```
